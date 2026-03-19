@@ -797,7 +797,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
     </div>
     <h1>ProctorAI</h1>
-    <p>AI-powered university examination portal</p>
+    <p>AI-powered examination portal</p>
   </div>
 
   <div class="role-cards fade-up fade-up-1">
@@ -1295,11 +1295,10 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
     <!-- Proctoring panel -->
     <div class="proctor-panel">
-      <div class="webcam-feed">
-        <div class="rec-dot"><div class="rec-dot-circle"></div> Recording</div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <div class="webcam-circle"></div>
-          <span class="webcam-label">Webcam Active</span>
+    <div class="webcam-feed">
+        <div class="rec-dot"><div class="rec-dot-circle"></div> REC</div>
+        <video id="webcam-video" autoplay muted playsinline
+    style="width:100%;height:100%;object-fit:cover;border-radius:10px;"> </video>
         </div>
       </div>
       <div class="proctor-section">
@@ -1451,7 +1450,7 @@ const Router = {
     }
     if (page === 'live-monitoring') AdminUI.renderLiveMonitoring();
     if (page === 'incident') AdminUI.renderIncident();
-    if (page === 'exam' && !State.exam.started) ExamController.start();
+    if (page === 'exam' && !State.exam.started) ExamController.start(); startWebcam();
   },
 };
 
@@ -1900,7 +1899,13 @@ const Modal = {
     });
   },
 };
-
+/*---- video cam asker--*/
+async function startWebcam() {
+  const video = document.getElementById('webcam-video');
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  video.srcObject = stream;
+  State.exam.stream = stream;
+}
 /* ═══════════════════════════════════════════════════════════════
    FORM HANDLERS
 ═══════════════════════════════════════════════════════════════ */
