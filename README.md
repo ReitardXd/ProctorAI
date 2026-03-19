@@ -22,8 +22,8 @@
 | Name | Role |
 |---|---|
 | Pranav | Full Stack Development — Backend, Frontend, Database, DevOps |
-| Member 2 | — |
-| Member 3 | — |
+| Devang | Scrum Master |
+| Parth | ProductOwner |
 
 ---
 
