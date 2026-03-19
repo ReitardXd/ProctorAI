@@ -1298,7 +1298,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
     <div class="webcam-feed">
         <div class="rec-dot"><div class="rec-dot-circle"></div> REC</div>
         <video id="webcam-video" autoplay muted playsinline
-    style="width:100%;height:100%;object-fit:cover;border-radius:10px;"> </video>
+    style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></video>
         </div>
       </div>
       <div class="proctor-section">
@@ -1450,7 +1450,7 @@ const Router = {
     }
     if (page === 'live-monitoring') AdminUI.renderLiveMonitoring();
     if (page === 'incident') AdminUI.renderIncident();
-    if (page === 'exam' && !State.exam.started) ExamController.start(); startWebcam();
+    if (page === 'exam' && !State.exam.started) ExamController.start();
   },
 };
 
@@ -1530,6 +1530,7 @@ const ExamController = {
     this._renderQuestion();
     this._startTimer();
     this._scheduleAlert();
+    startWebcam();
   },
 
   _startTimer() {
@@ -1902,9 +1903,27 @@ const Modal = {
 /*---- video cam asker--*/
 async function startWebcam() {
   const video = document.getElementById('webcam-video');
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  video.srcObject = stream;
-  State.exam.stream = stream;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    video.srcObject = stream;
+    State.exam.stream = stream;
+  } catch (err) {
+    // Permission denied — show modal and block exam
+    Modal.showAlert({
+      title: 'Camera Access Required',
+      type: 'warning',
+      icon: 'alert',
+      message: 'ProctorAI requires camera and microphone access to conduct this exam. Please allow access in your browser and refresh the page.',
+      details: [
+        { label: 'Error', value: err.message },
+        { label: 'Action', value: 'Allow camera in browser settings' },
+      ],
+      actions: [
+        { label: 'Go Back to Login', primary: false, fn: () => { Modal.close(); Auth.logout(); } },
+        { label: 'Retry', primary: true, fn: () => { Modal.close(); startWebcam(); } },
+      ],
+    });
+  }
 }
 /* ═══════════════════════════════════════════════════════════════
    FORM HANDLERS
