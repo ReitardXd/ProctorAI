@@ -94,7 +94,9 @@ ProctorProject/
     utils/
       encrypt.js              # AES encrypt / decrypt helpers
   Frontend/
-    proctor.html              # Entire frontend — routing, state, UI in one file
+    proctor.html             # Entire frontend — routing, state, UI in one file
+  ai_service/
+    app.py
   package.json
 ```
 
@@ -154,6 +156,11 @@ node backend/server.js
 # 4. Start frontend — Terminal 2
 live-server Frontend/
 # → http://127.0.0.1:8080/proctor.html
+
+# 5. Start ai_service— Terminal 3
+python3 ai_service/app.py
+# → Running on http://127.0.0.1:5000
+
 ```
 
 ### Demo Credentials
