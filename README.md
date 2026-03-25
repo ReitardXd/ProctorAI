@@ -21,9 +21,9 @@
 
 | Name | Role |
 |---|---|
-| Pranav | Full Stack Development — Backend, Frontend, Database, DevOps |
+| Pranav | Developer|
 | Devang | Scrum Master |
-| Parth | ProductOwner |
+| Parth  | Product Owner |
 
 ---
 
@@ -35,7 +35,7 @@ The system implements real webcam-based monitoring using the browser's `getUserM
 
 ---
 
-## Demo Video
+## Demo Video (will be added as soon as the project is finished)
 
 The demo recording covers all Sprint 3 user stories end to end:
 
