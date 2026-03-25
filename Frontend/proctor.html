@@ -640,6 +640,50 @@ tr:hover td { background: rgba(255,255,255,.02); }
 /* ═══════════════════════════════════════════════════════════════
    PAGE: STUDENT EXAM
 ═══════════════════════════════════════════════════════════════ */
+#p-instructions {
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 24px; background: var(--navy);
+}
+.instructions-card {
+  position: relative; z-index: 1;
+  width: 560px; max-width: 95vw;
+  background: var(--card-bg); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 44px 40px; box-shadow: var(--shadow);
+}
+.instructions-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.instructions-icon {
+  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+  background: rgba(37,99,235,.15); border: 1px solid rgba(37,99,235,.3);
+  display: flex; align-items: center; justify-content: center; color: var(--blue3);
+}
+.instructions-icon svg { width: 24px; height: 24px; }
+.instructions-header h2 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.instructions-header p  { font-size: 13px; color: var(--muted); }
+.instructions-meta {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 28px;
+}
+.instructions-meta-item {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; text-align: center;
+}
+.instructions-meta-item span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.instructions-meta-item strong { font-size: 18px; font-weight: 700; color: var(--blue3); }
+.instructions-rules { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.instructions-rules li {
+  display: flex; align-items: flex-start; gap: 12px;
+  font-size: 13px; color: var(--muted); line-height: 1.5;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+}
+.instructions-rules li svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; color: var(--blue3); }
+.instructions-rules li.warn svg { color: var(--amber); }
+.instructions-checkbox {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px; font-size: 13px; color: var(--muted); cursor: pointer;
+}
+.instructions-checkbox input { accent-color: var(--blue); width: 16px; height: 16px; cursor: pointer; }
+
+
 #p-exam { flex-direction: column; background: var(--navy2); }
 
 .exam-topbar {
@@ -1256,6 +1300,58 @@ tr:hover td { background: rgba(255,255,255,.02); }
   </div>
 </div>
 
+
+<!-- INSTRUCTIONS PAGE -->
+<div id="p-instructions" class="page">
+  <div class="instructions-card fade-up">
+    <div class="instructions-header">
+      <div class="instructions-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div>
+        <h2>Computer Science Final Exam</h2>
+        <p>Read all instructions carefully before starting</p>
+      </div>
+    </div>
+    <div class="instructions-meta">
+      <div class="instructions-meta-item"><span>Questions</span><strong>10</strong></div>
+      <div class="instructions-meta-item"><span>Duration</span><strong>60 min</strong></div>
+      <div class="instructions-meta-item"><span>Marks</span><strong>10 / 10</strong></div>
+    </div>
+    <ul class="instructions-rules">
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        10 multiple choice questions, one correct answer each.
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        60 minutes total. Timer starts immediately when you click Start.
+      </li>
+      <li class="warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Exam auto-submits at 00:00. Unanswered questions are marked incorrect.
+      </li>
+      <li class="warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Do not switch tabs or minimise the window. All activity is monitored.
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Keep your face visible on webcam at all times.
+      </li>
+    </ul>
+    <label class="instructions-checkbox">
+      <input type="checkbox" id="instructions-agree"
+        onchange="document.getElementById('btn-start-exam').disabled = !this.checked;" />
+      I have read and understood all exam instructions
+    </label>
+    <button class="btn btn-primary btn-full btn-lg" id="btn-start-exam" disabled onclick="startExam()">
+      Start Exam
+    </button>
+  </div>
+</div>
+
+
 <!-- ══════════════════════════════════════════════════════════════════════
      PAGE 7 — STUDENT EXAM
 ══════════════════════════════════════════════════════════════════════ -->
@@ -1378,7 +1474,7 @@ const State = {
   exam: {
     started:    false,
     submitted:  false,
-    secondsLeft: 3600,
+    secondsLeft: 60,
     secondsUsed: 0,
     timerInterval: null,
     alertTimeout:  null,
@@ -1398,6 +1494,7 @@ const Router = {
     'role-select':       { id: 'p-role-select',       roles: null,      block: false },
     'student-login':     { id: 'p-student-login',     roles: null,      block: false },
     'admin-login':       { id: 'p-admin-login',       roles: null,      block: false },
+    'instructions': { id: 'p-instructions', roles: ['student'], block: false },
     'exam':              { id: 'p-exam',               roles: ['student'], block: true  },
     'submitted':         { id: 'p-submitted',          roles: ['student'], block: false },
     'dashboard':         { id: 'p-dashboard',          roles: ['admin'],   block: false },
@@ -1478,7 +1575,7 @@ const Auth = {
     State.user = null;
     State.exam = {
       started: false, submitted: false,
-      secondsLeft: 3600, secondsUsed: 0,
+      secondsLeft: 60, secondsUsed: 0,
       timerInterval: null, alertTimeout: null,
       currentQ: 0, answers: new Array(10).fill(null),
     };
@@ -1518,7 +1615,7 @@ const ExamController = {
     if (State.exam.started) return;
     State.exam.started    = true;
     State.exam.submitted  = false;
-    State.exam.secondsLeft = 3600;
+    State.exam.secondsLeft = 60;
     State.exam.secondsUsed = 0;
     State.exam.currentQ   = 0;
     State.exam.answers    = new Array(QUESTIONS.length).fill(null);
@@ -1545,8 +1642,8 @@ const ExamController = {
         this.submit(true);
         return;
       }
-      const h = String(Math.floor(State.exam.secondsLeft / 3600)).padStart(2,'0');
-      const m = String(Math.floor((State.exam.secondsLeft % 3600) / 60)).padStart(2,'0');
+      const h = String(Math.floor(State.exam.secondsLeft / 60)).padStart(2,'0');
+      const m = String(Math.floor((State.exam.secondsLeft % 60) / 60)).padStart(2,'0');
       const s = String(State.exam.secondsLeft % 60).padStart(2,'0');
       if (timerEl) timerEl.textContent = `${h}:${m}:${s}`;
       if (timerWrap && State.exam.secondsLeft < 300) timerWrap.classList.add('timer-warn');
@@ -1670,7 +1767,7 @@ const ExamController = {
     });
   },
 
-  submit(auto = false) {
+ async  submit(auto = false) {
     if (State.exam.submitted) return;
     State.exam.submitted = true;
     this._stop();
@@ -1679,8 +1776,18 @@ const ExamController = {
     const answered = State.exam.answers.filter(a => a !== null).length;
     const score    = State.exam.answers.reduce((acc, a, i) => acc + (a === QUESTIONS[i].ans ? 1 : 0), 0);
     const used     = State.exam.secondsUsed;
-    const hh = Math.floor(used / 3600), mm = Math.floor((used % 3600) / 60), ss = used % 60;
+    const hh = Math.floor(used / 60), mm = Math.floor((used % 60) / 60), ss = used % 60;
     const duration = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    try {
+  await fetch('http://localhost:3000/api/exam/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ exam_id: 1, answers: State.exam.answers }),
+  });
+} catch (err) {
+  console.warn('Backend submit failed:', err.message);
+}
 
     Router.navigate('submitted');
 
@@ -1939,7 +2046,7 @@ function handleStudentLogin(e) {
     showLoadingThen('Verifying identity…', 800, () => {
       showLoadingThen('Initialising proctoring session…', 900, () => {
         showLoadingThen('Starting exam…', 600, () => {
-          Router.navigate('exam');
+          Router.navigate('instructions');
         });
       });
     });
@@ -1997,6 +2104,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start at landing
   Router.navigate('role-select');
 });
+
+function startExam() {
+  Router.navigate('exam');
+}
 </script>
 </body>
 </html>
