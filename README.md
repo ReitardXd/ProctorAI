@@ -1,6 +1,6 @@
 # ProctorAI — AI-Powered University Examination Portal
 
-![Sprint](https://img.shields.io/badge/Sprint-3-blue) ![Status](https://img.shields.io/badge/Status-Complete-green) ![Stack](https://img.shields.io/badge/Stack-Node.js%20%7C%20PostgreSQL%20%7C%20Vanilla%20JS-navy)
+![Sprint](https://img.shields.io/badge/Sprint-3-blue) ![Status](https://img.shields.io/badge/Status-InComplete-red) ![Stack](https://img.shields.io/badge/Stack-Node.js%20%7C%20PostgreSQL%20%7C%20Vanilla%20JS-navy)
 
 ---
 
