@@ -54,6 +54,8 @@ The demo recording covers all Sprint 3 user stories end to end:
 | US2 | Web-Based Access | Must Have | 2 / 2 | ✅ Complete |
 | US3 | Secure Login | Must Have | 4 / 4 | ✅ Complete |
 | US4 | Webcam & Mic Access | Must Have | 4 / 4 | ✅ Complete |
+| US5 | Exam Timer and Instructions | Must Have | 4 / 4 | ✅ Complete |
+| US6 | AUto Submission after Exam ends | Must Have | 4 / 4 | ✅ Complete |
 
 ---
 
