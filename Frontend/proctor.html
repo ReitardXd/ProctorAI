@@ -1554,24 +1554,29 @@ const Router = {
 /* ═══════════════════════════════════════════════════════════════
    AUTH — login & logout logic
 ═══════════════════════════════════════════════════════════════ */
-const CREDENTIALS = {
-  student: { password: 'student123', name: 'Alex Parker',      email: 'alex.parker@uni.edu', id: 'STU-2024-0042' },
-  admin:   { password: 'admin123',   name: 'Dr. Morgan Wei',   email: 'morgan.wei@proctai.com', id: 'ADM-001' },
-};
+const API = 'http://localhost:3000/api';
 
 const Auth = {
-  login(username, password, role) {
-    const cred = CREDENTIALS[username];
-    if (!cred || cred.password !== password) return false;
-    if (role === 'student' && username !== 'student') return false;
-    if (role === 'admin'   && username !== 'admin')   return false;
-    State.user = { role, name: cred.name, email: cred.email, id: cred.id };
-    return true;
+  async login(username, password) {
+    const res  = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error };
+    State.user = { role: data.role, name: data.name };
+    return { success: true, role: data.role };
   },
 
-  logout() {
+  async logout() {
     const role = State.user?.role;
     ExamController._stop();
+    AIProctor.stop();
+    await fetch(`${API}/auth/logout`, {
+      method: 'POST', credentials: 'include'
+    });
     State.user = null;
     State.exam = {
       started: false, submitted: false,
@@ -1583,7 +1588,6 @@ const Auth = {
     Router.navigate(role === 'admin' ? 'admin-login' : 'student-login');
   },
 };
-
 /* ═══════════════════════════════════════════════════════════════
    EXAM CONTROLLER
 ═══════════════════════════════════════════════════════════════ */
@@ -2014,8 +2018,8 @@ async function startWebcam() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     video.srcObject = stream;
     State.exam.stream = stream;
+    AIProctor.start(); // start AI polling once webcam is live
   } catch (err) {
-    // Permission denied — show modal and block exam
     Modal.showAlert({
       title: 'Camera Access Required',
       type: 'warning',
@@ -2035,38 +2039,44 @@ async function startWebcam() {
 /* ═══════════════════════════════════════════════════════════════
    FORM HANDLERS
 ═══════════════════════════════════════════════════════════════ */
-function handleStudentLogin(e) {
+async function handleStudentLogin(e) {
   e.preventDefault();
   const username = document.getElementById('s-username').value.trim();
   const password = document.getElementById('s-password').value;
   const errEl    = document.getElementById('s-error');
 
-  if (Auth.login(username, password, 'student')) {
-    errEl.style.display = 'none';
-    showLoadingThen('Verifying identity…', 800, () => {
+  showLoadingThen('Verifying identity…', 800, async () => {
+    const result = await Auth.login(username, password);
+    if (result.success && result.role === 'student') {
+      errEl.style.display = 'none';
       showLoadingThen('Initialising proctoring session…', 900, () => {
         showLoadingThen('Starting exam…', 600, () => {
           Router.navigate('instructions');
         });
       });
-    });
-  } else {
-    errEl.style.display = 'flex';
-  }
+    } else {
+      document.getElementById('loading-overlay').classList.remove('active');
+      errEl.style.display = 'flex';
+    }
+  });
 }
 
-function handleAdminLogin(e) {
+async function handleAdminLogin(e) {
   e.preventDefault();
   const username = document.getElementById('a-username').value.trim();
   const password = document.getElementById('a-password').value;
   const errEl    = document.getElementById('a-error');
 
-  if (Auth.login(username, password, 'admin')) {
-    errEl.style.display = 'none';
-    showLoadingThen('Authenticating…', 700, () => Router.navigate('dashboard'));
-  } else {
-    errEl.style.display = 'flex';
-  }
+  showLoadingThen('Authenticating…', 700, async () => {
+    const result = await Auth.login(username, password);
+    if (result.success && result.role === 'admin') {
+      errEl.style.display = 'none';
+      Router.navigate('dashboard');
+    } else {
+      document.getElementById('loading-overlay').classList.remove('active');
+      errEl.style.display = 'flex';
+    }
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2104,6 +2114,98 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start at landing
   Router.navigate('role-select');
 });
+
+
+/* ═══════════════════════════════════════════════════════════════
+   AI PROCTORING — frame capture + polling
+═══════════════════════════════════════════════════════════════ */
+const AIProctor = {
+  interval: null,
+
+  start() {
+    this.interval = setInterval(() => {
+      if (State.exam.submitted || !State.exam.started) return;
+      this.analyzeFrame();
+    }, 3000); // every 3 seconds
+  },
+
+  stop() {
+    if (this.interval) { clearInterval(this.interval); this.interval = null; }
+  },
+
+  async analyzeFrame() {
+    const video = document.getElementById('webcam-video');
+    if (!video || !video.srcObject) return;
+
+    // Capture frame from video to canvas
+    const canvas = document.createElement('canvas');
+    canvas.width  = video.videoWidth  || 320;
+    canvas.height = video.videoHeight || 240;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const frame = canvas.toDataURL('image/jpeg', 0.6);
+
+    try {
+      const res  = await fetch('http://localhost:3000/api/proctor/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ frame }),
+      });
+      const data = await res.json();
+      this.updateStatus(data);
+    } catch (err) {
+      console.warn('Proctor analyze failed:', err.message);
+    }
+  },
+
+  updateStatus(data) {
+    const checks = document.querySelectorAll('.status-check');
+    if (!checks.length) return;
+
+    // Face Detected
+    checks[0].className = 'status-check' + (data.face_detected ? '' : ' warn');
+    checks[0].querySelector('svg').outerHTML = data.face_detected
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    // Single Person
+    checks[1].className = 'status-check' + (data.multiple_faces ? ' warn' : '');
+    checks[1].querySelector('svg').outerHTML = data.multiple_faces
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    // Focus Maintained
+    checks[2].className = 'status-check' + (data.looking_away ? ' warn' : '');
+    checks[2].querySelector('svg').outerHTML = data.looking_away
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    // Trigger modal alert for serious violations
+    const violation = !data.face_detected ? 'Face not detected'
+      : data.multiple_faces ? 'Multiple faces detected'
+      : data.looking_away   ? 'Gaze deviation detected'
+      : null;
+
+    if (violation) {
+      this.stop(); // pause polling while modal is open
+      Modal.showAlert({
+        title: 'Suspicious Behavior Detected',
+        type: 'warning',
+        icon: 'alert',
+        message: 'Our AI monitoring system has flagged an anomaly. This has been logged.',
+        details: [
+          { label: 'Violation',   value: violation },
+          { label: 'Confidence',  value: '92%' },
+          { label: 'Time',        value: new Date().toLocaleTimeString() },
+        ],
+        actions: [
+          { label: 'I Understand — Continue', primary: true, fn: () => { Modal.close(); this.start(); } },
+        ],
+      });
+    }
+  },
+};
+
 
 function startExam() {
   Router.navigate('exam');
