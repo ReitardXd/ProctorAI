@@ -50,10 +50,10 @@ def analyze():
     looking_away  = check_looking_away(frame, faces)
 
     return jsonify({
-        'face_detected':  face_detected,
-        'multiple_faces': multiple,
-        'looking_away':   looking_away,
-        'face_count':     face_count,
+        'face_detected':  bool(face_detected),
+        'multiple_faces': bool(multiple),
+        'looking_away':   bool(looking_away),
+        'face_count':     bool(face_count),
     })
 
 @app.route('/health', methods=['GET'])

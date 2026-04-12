@@ -1554,7 +1554,7 @@ const Router = {
 /* ═══════════════════════════════════════════════════════════════
    AUTH — login & logout logic
 ═══════════════════════════════════════════════════════════════ */
-const API = 'http://localhost:3000/api';
+const API = 'http://127.0.0.1:3000/api';
 
 const Auth = {
   async login(username, password) {
@@ -1773,7 +1773,7 @@ const ExamController = {
 
  async  submit(auto = false) {
     if (State.exam.submitted) return;
-    State.exam.submitted = true;
+    if (State.exam.submitted = true);
     this._stop();
 
     // Calculate results
@@ -1783,7 +1783,7 @@ const ExamController = {
     const hh = Math.floor(used / 60), mm = Math.floor((used % 60) / 60), ss = used % 60;
     const duration = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
     try {
-  await fetch('http://localhost:3000/api/exam/submit', {
+  await fetch('http://127.0.0.1:3000/api/exam/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -1807,14 +1807,7 @@ const ExamController = {
 /* ═══════════════════════════════════════════════════════════════
    ADMIN UI — dashboard, incident, live monitoring
 ═══════════════════════════════════════════════════════════════ */
-const INCIDENT_DATA = [
-  { id:'INC001', name:'Sarah Johnson',   init:'S', color:'#2563eb', violation:'Multiple Faces Detected', ts:'2026-03-17 09:15:32', conf:92, severity:'critical' },
-  { id:'INC002', name:'Michael Chen',    init:'M', color:'#7c3aed', violation:'Tab Switching',           ts:'2026-03-17 09:12:45', conf:98, severity:'critical' },
-  { id:'INC003', name:'Emily Rodriguez', init:'E', color:'#059669', violation:'Face Not Detected',       ts:'2026-03-17 09:08:19', conf:88, severity:'high'     },
-  { id:'INC004', name:'James Anderson',  init:'J', color:'#d97706', violation:'Looking Away',            ts:'2026-03-17 09:05:12', conf:76, severity:'medium'   },
-  { id:'INC005', name:'Lisa Williams',   init:'L', color:'#dc2626', violation:'Tab Switching',           ts:'2026-03-17 08:58:33', conf:95, severity:'critical' },
-  { id:'INC006', name:'Sarah Johnson',   init:'S', color:'#2563eb', violation:'Multiple Faces Detected', ts:'2026-03-17 08:45:22', conf:89, severity:'high'     },
-];
+const INCIDENT_DATA =[];
 
 const LIVE_STUDENTS = [
   { name:'Alex Parker',    init:'A', color:'#2563eb', exam:'CS Final',       progress:45, status:'ok'    },
@@ -1839,33 +1832,46 @@ const AdminUI = {
     el.classList.add('active');
   },
 
-  renderDashboard() {
-    const tbody = document.getElementById('incident-table');
-    if (!tbody || tbody.dataset.rendered) return;
-    tbody.dataset.rendered = '1';
-    INCIDENT_DATA.forEach(inc => {
+ async renderDashboard() {
+  const tbody = document.getElementById('incident-table');
+  if (!tbody || tbody.dataset.rendered) return;
+  tbody.dataset.rendered = '1';
+
+  try {
+    const res  = await fetch('http://127.0.0.1:3000/api/proctor/incidents', {
+      credentials: 'include'
+    });
+    const data = await res.json();
+
+    data.forEach(inc => {
       const sevClass   = inc.severity === 'critical' ? 'conf-red' : inc.severity === 'high' ? 'conf-amber' : '';
       const badgeClass = inc.severity === 'critical' ? 'badge-red' : inc.severity === 'high' ? 'badge-amber' : 'badge-blue';
+      const init       = inc.student_name?.charAt(0) || '?';
+      const color      = '#2563eb';
+      const ts         = new Date(inc.timestamp).toLocaleString();
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><div class="student-cell"><div class="avatar" style="background:${inc.color}22;color:${inc.color}">${inc.init}</div>${inc.name}</div></td>
+        <td><div class="student-cell"><div class="avatar" style="background:${color}22;color:${color}">${init}</div>${inc.student_name}</div></td>
         <td>${inc.violation}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${inc.ts}</td>
-        <td class="${sevClass}">${inc.conf}%</td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${ts}</td>
+        <td class="${sevClass}">${inc.confidence}%</td>
         <td><span class="badge ${badgeClass}">${inc.severity}</span></td>
         <td><button class="action-btn" onclick="AdminUI.openIncident('${inc.id}')">View →</button></td>
       `;
       tbody.appendChild(tr);
     });
-  },
+  } catch (err) {
+    console.error('Failed to load incidents:', err.message);
+  }
+},
 
   openIncident(id) {
-    State.admin.selectedIncident = INCIDENT_DATA.find(i => i.id === id) || INCIDENT_DATA[0];
+    State.admin.selectedIncident = { id};
     Router.navigate('incident');
   },
 
   renderIncident() {
-    const inc = State.admin.selectedIncident || INCIDENT_DATA[0];
+    const inc = State.admin.selectedIncident || {};
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     const sev = { critical: { badge:'badge-red', label:'Critical' }, high: { badge:'badge-amber', label:'High' }, medium: { badge:'badge-blue', label:'Medium' } };
 
@@ -2145,13 +2151,15 @@ const AIProctor = {
     const frame = canvas.toDataURL('image/jpeg', 0.6);
 
     try {
-      const res  = await fetch('http://localhost:3000/api/proctor/analyze', {
+      const res  = await fetch('http://127.0.0.1:3000/api/proctor/analyze', {
+        
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ frame }),
+        body: JSON.stringify({ frame, exam_id: 1 }),
       });
       const data = await res.json();
+      console.log = ('AI Result:'. data);      
       this.updateStatus(data);
     } catch (err) {
       console.warn('Proctor analyze failed:', err.message);
@@ -2199,7 +2207,7 @@ const AIProctor = {
           { label: 'Time',        value: new Date().toLocaleTimeString() },
         ],
         actions: [
-          { label: 'I Understand — Continue', primary: true, fn: () => { Modal.close(); this.start(); } },
+          { label: 'I Understand the rules  — Continue', primary: true, fn: () => { Modal.close(); this.start(); } },
         ],
       });
     }
