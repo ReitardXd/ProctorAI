@@ -197,7 +197,7 @@ The entire frontend is a single HTML file with no external frameworks. It implem
 - Submit confirmation modal showing answered vs unanswered questions
 - Suspicious behavior alerts fired during exam session
 - AES-encrypted exam submissions verified in database
-- Admin dashboard with incident logs, live monitoring, and violation details
+- Admin dashboard with incident logs and violation details
 
 ---
 
