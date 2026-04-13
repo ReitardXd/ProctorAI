@@ -1483,6 +1483,8 @@ const State = {
   },
   admin: {
     selectedIncident: null,
+    incidentData: [],
+    incidentMap: {},
   },
 };
 
@@ -1541,8 +1543,11 @@ const Router = {
 
     // ── Lifecycle hooks ───────────────────────────────────────
     if (page === 'dashboard') {
-      AdminUI.renderDashboard();
-      const nameEl = document.getElementById('admin-name-dash');
+  const tbody = document.getElementById('incident-table');
+  if (tbody) { tbody.innerHTML = ''; delete tbody.dataset.rendered; }
+  AdminUI.renderDashboard();
+
+    const nameEl = document.getElementById('admin-name-dash');
       if (nameEl && State.user) nameEl.textContent = State.user.name;
     }
     if (page === 'live-monitoring') AdminUI.renderLiveMonitoring();
@@ -1585,6 +1590,9 @@ const Auth = {
       currentQ: 0, answers: new Array(10).fill(null),
     };
     State.admin.selectedIncident = null;
+    State.admin.incidentData = [];
+    State.admin.incidentMap = {};
+
     Router.navigate(role === 'admin' ? 'admin-login' : 'student-login');
   },
 };
@@ -1807,7 +1815,7 @@ const ExamController = {
 /* ═══════════════════════════════════════════════════════════════
    ADMIN UI — dashboard, incident, live monitoring
 ═══════════════════════════════════════════════════════════════ */
-const INCIDENT_DATA =[];
+
 
 const LIVE_STUDENTS = [
   { name:'Alex Parker',    init:'A', color:'#2563eb', exam:'CS Final',       progress:45, status:'ok'    },
@@ -1818,13 +1826,6 @@ const LIVE_STUDENTS = [
   { name:'Tom Nguyen',     init:'T', color:'#14b8a6', exam:'Algorithms',      progress:20, status:'ok'    },
 ];
 
-const TIMELINE_EVENTS = [
-  { label:'Multiple faces detected',   conf:'92% confidence', time:'09:15:32', sev:'red'   },
-  { label:'Face not detected',         conf:'88% confidence', time:'09:10:45', sev:'amber' },
-  { label:'Looking away from screen',  conf:'76% confidence', time:'09:05:12', sev:'amber' },
-  { label:'Tab switch detected',       conf:'98% confidence', time:'09:00:33', sev:'red'   },
-  { label:'Multiple faces detected',   conf:'89% confidence', time:'08:55:22', sev:'amber' },
-];
 
 const AdminUI = {
   setNav(_, el) {
@@ -1833,7 +1834,7 @@ const AdminUI = {
   },
 
  async renderDashboard() {
-  const tbody = document.getElementById('incident-table');
+ const tbody = document.getElementById('incident-table');
   if (!tbody || tbody.dataset.rendered) return;
   tbody.dataset.rendered = '1';
 
@@ -1843,10 +1844,15 @@ const AdminUI = {
     });
     const data = await res.json();
 
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No incidents recorded yet.</td></tr>';
+      return;
+    }
+
     data.forEach(inc => {
       const sevClass   = inc.severity === 'critical' ? 'conf-red' : inc.severity === 'high' ? 'conf-amber' : '';
       const badgeClass = inc.severity === 'critical' ? 'badge-red' : inc.severity === 'high' ? 'badge-amber' : 'badge-blue';
-      const init       = inc.student_name?.charAt(0) || '?';
+      const init       = inc.student_name?.charAt(0).toUpperCase() || '?';
       const color      = '#2563eb';
       const ts         = new Date(inc.timestamp).toLocaleString();
       const tr = document.createElement('tr');
@@ -1856,63 +1862,87 @@ const AdminUI = {
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${ts}</td>
         <td class="${sevClass}">${inc.confidence}%</td>
         <td><span class="badge ${badgeClass}">${inc.severity}</span></td>
-        <td><button class="action-btn" onclick="AdminUI.openIncident('${inc.id}')">View →</button></td>
+        <td><button class="action-btn" onclick="AdminUI.openIncident(${inc.id})">View →</button></td>
       `;
       tbody.appendChild(tr);
     });
+
+    // Store fetched data for incident detail view
+     State.admin.incidentData = data;
+    State.admin.incidentMap  = {};
+    data.forEach(i => { State.admin.incidentMap[i.id] = i; });
+
   } catch (err) {
     console.error('Failed to load incidents:', err.message);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Failed to load incidents.</td></tr>';
   }
 },
 
+
+
   openIncident(id) {
-    State.admin.selectedIncident = { id};
-    Router.navigate('incident');
-  },
+  console.log('id:', id, 'map:', State.admin.incidentMap);
+  State.admin.selectedIncident = (State.admin.incidentMap || {})[id] || {};
+  console.log('selected:', State.admin.selectedIncident);
+  Router.navigate('incident');
+},
 
-  renderIncident() {
-    const inc = State.admin.selectedIncident || {};
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const sev = { critical: { badge:'badge-red', label:'Critical' }, high: { badge:'badge-amber', label:'High' }, medium: { badge:'badge-blue', label:'Medium' } };
 
-    set('inc-id',        `Incident ID: ${inc.id}`);
-    set('inc-name',      inc.name);
-    set('inc-violation', inc.violation);
-    set('inc-conf',      `${inc.conf}%`);
-    set('inc-ts',        inc.ts);
-    set('inc-ts-snap',   inc.ts);
-    set('inc-snap-tag',  inc.violation);
+renderIncident() {
+  const inc = State.admin.selectedIncident || {};
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
+  const sev = { critical: { badge:'badge-red', label:'Critical' }, high: { badge:'badge-amber', label:'High' }, medium: { badge:'badge-blue', label:'Medium' } };
 
-    const bar = document.getElementById('inc-conf-bar');
-    if (bar) bar.style.width = `${inc.conf}%`;
+  const ts = inc.timestamp ? new Date(inc.timestamp).toLocaleString() : '—';
 
-    const sevEl = document.getElementById('inc-sev');
-    if (sevEl) {
-      const s = sev[inc.severity] || { badge: 'badge-blue', label: inc.severity };
-      sevEl.textContent = s.label;
-      sevEl.className   = `badge ${s.badge}`;
+  set('inc-id',        `Incident ID: INC-${String(inc.id).padStart(3,'0')}`);
+  set('inc-name',      inc.student_name);
+  set('inc-violation', inc.violation);
+  set('inc-conf',      `${inc.confidence}%`);
+  set('inc-ts',        ts);
+  set('inc-ts-snap',   ts);
+  set('inc-snap-tag',  inc.violation);
+
+  const bar = document.getElementById('inc-conf-bar');
+  if (bar) bar.style.width = `${inc.confidence || 0}%`;
+
+  const sevEl = document.getElementById('inc-sev');
+  if (sevEl) {
+    const s = sev[inc.severity] || { badge: 'badge-blue', label: inc.severity || 'Unknown' };
+    sevEl.textContent = s.label;
+    sevEl.className   = `badge ${s.badge}`;
+  }
+
+  // Build timeline from all incidents for this student
+  const tl = document.getElementById('timeline');
+  if (tl) {
+    tl.innerHTML = '';
+    const studentIncs = (State.admin.incidentData || [])
+      .filter(i => i.student_name === inc.student_name)
+      .slice(0, 5);
+
+    if (!studentIncs.length) {
+      tl.innerHTML = '<p style="font-size:13px;color:var(--muted);">No timeline data available.</p>';
+      return;
     }
 
-    // Render timeline
-    const tl = document.getElementById('timeline');
-    if (tl && !tl.dataset.rendered) {
-      tl.dataset.rendered = '1';
-      TIMELINE_EVENTS.forEach(e => {
-        const item = document.createElement('div');
-        item.className = 'tl-item';
-        item.innerHTML = `
-          <div class="tl-dot ${e.sev}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-          <div class="tl-content">
-            <h4>${e.label}</h4>
-            <span>${e.conf}</span>
-            <div class="tl-time">${e.time}</div>
-          </div>`;
-        tl.appendChild(item);
-      });
-    }
-  },
+    studentIncs.forEach(e => {
+      const sev = e.severity === 'critical' ? 'red' : 'amber';
+      const item = document.createElement('div');
+      item.className = 'tl-item';
+      item.innerHTML = `
+        <div class="tl-dot ${sev}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="tl-content">
+          <h4>${e.violation}</h4>
+          <span>${e.confidence}% confidence</span>
+          <div class="tl-time">${new Date(e.timestamp).toLocaleTimeString()}</div>
+        </div>`;
+      tl.appendChild(item);
+    });
+  }
+},
 
   renderLiveMonitoring() {
     const grid = document.getElementById('live-grid');
@@ -1951,24 +1981,39 @@ const AdminUI = {
     });
   },
 
-  reviewAction(type) {
-    const labels = { reviewed: 'Marked as Reviewed', flagged: 'Flagged for Investigation', dismissed: 'Incident Dismissed' };
-    Modal.showAlert({
-      title:   labels[type] || 'Action Taken',
-      type:    'success',
-      icon:    'submit',
-      message: `The incident has been ${type}. This action has been logged with your admin credentials.`,
-      details: [
-        { label: 'Admin',   value: State.user?.name || 'Admin' },
-        { label: 'Action',  value: labels[type] },
-        { label: 'Time',    value: new Date().toLocaleTimeString() },
-      ],
-      actions: [
-        { label: 'Back to Dashboard', primary: false, fn: () => { Modal.close(); Router.navigate('dashboard'); } },
-        { label: 'Close',             primary: true,  fn: Modal.close.bind(Modal) },
-      ],
+async reviewAction(type) {
+  const inc = State.admin.selectedIncident || {};
+  const labels = { reviewed: 'Marked as Reviewed', flagged: 'Flagged for Investigation', dismissed: 'Incident Dismissed' };
+
+  try {
+    await fetch(`http://127.0.0.1:3000/api/proctor/incidents/${inc.id}`, {
+      method: 'DELETE',
+      credentials: 'include',
     });
-  },
+    // Remove from local state
+    if (State.admin.incidentData) {
+      State.admin.incidentData = State.admin.incidentData.filter(i => i.id !== inc.id);
+    }
+  } catch (err) {
+    console.warn('Failed to delete incident:', err.message);
+  }
+
+  Modal.showAlert({
+    title: labels[type] || 'Action Taken',
+    type: 'success',
+    icon: 'submit',
+    message: `The incident has been ${type}. This action has been logged.`,
+    details: [
+      { label: 'Admin',  value: State.user?.name || 'Admin' },
+      { label: 'Action', value: labels[type] },
+      { label: 'Time',   value: new Date().toLocaleTimeString() },
+    ],
+    actions: [
+      { label: 'Back to Dashboard', primary: false, fn: () => { Modal.close(); Router.navigate('dashboard'); } },
+      { label: 'Close',             primary: true,  fn: Modal.close.bind(Modal) },
+    ],
+  });
+},
 };
 
 /* ═══════════════════════════════════════════════════════════════

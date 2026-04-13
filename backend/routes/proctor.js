@@ -60,4 +60,17 @@ router.get('/incidents', authenticate, requireRole('admin'), async (req, res) =>
   }
 });
 
+
+// DELETE /api/proctor/incidents/:id — admin removes an incident
+router.delete('/incidents/:id', authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    await pool.query('DELETE FROM incidents WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 module.exports = router;
