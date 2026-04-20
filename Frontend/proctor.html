@@ -1557,9 +1557,31 @@ const Router = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   AUTH — login & logout logic
+    AUTH — login & logout logic
 ═══════════════════════════════════════════════════════════════ */
-const API = 'http://127.0.0.1:3000/api';
+// Get API base URL from window location or environment
+const getApiBaseUrl = () => {
+  // Check if we have an explicit API_BASE_URL in window
+  if (window.API_BASE_URL) {
+    return window.API_BASE_URL;
+  }
+  
+  // Use relative URL pointing to the same origin
+  // If frontend is at http://localhost:8080, API should be at http://localhost:3000
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  
+  // For development, check if we're on localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:3000/api`;
+  }
+  
+  // For production, assume API is on same domain but different port or path
+  // You can customize this based on your deployment
+  return `${protocol}//${hostname}:3000/api`;
+};
+
+const API = getApiBaseUrl();
 
 const Auth = {
   async login(username, password) {
@@ -1654,9 +1676,9 @@ const ExamController = {
         this.submit(true);
         return;
       }
-      const h = String(Math.floor(State.exam.secondsLeft / 60)).padStart(2,'0');
-      const m = String(Math.floor((State.exam.secondsLeft % 60) / 60)).padStart(2,'0');
-      const s = String(State.exam.secondsLeft % 60).padStart(2,'0');
+       const h = String(Math.floor(State.exam.secondsLeft / 3600)).padStart(2,'0');
+       const m = String(Math.floor((State.exam.secondsLeft % 3600) / 60)).padStart(2,'0');
+       const s = String(State.exam.secondsLeft % 60).padStart(2,'0');
       if (timerEl) timerEl.textContent = `${h}:${m}:${s}`;
       if (timerWrap && State.exam.secondsLeft < 300) timerWrap.classList.add('timer-warn');
     }, 1000);
@@ -1779,9 +1801,9 @@ const ExamController = {
     });
   },
 
- async  submit(auto = false) {
-    if (State.exam.submitted) return;
-    if (State.exam.submitted = true);
+  async  submit(auto = false) {
+     if (State.exam.submitted) return;
+     State.exam.submitted = true;
     this._stop();
 
     // Calculate results
@@ -1790,13 +1812,13 @@ const ExamController = {
     const used     = State.exam.secondsUsed;
     const hh = Math.floor(used / 60), mm = Math.floor((used % 60) / 60), ss = used % 60;
     const duration = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
-    try {
-  await fetch('http://127.0.0.1:3000/api/exam/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ exam_id: 1, answers: State.exam.answers }),
-  });
+     try {
+   await fetch(`${API}/exam/submit`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     credentials: 'include',
+     body: JSON.stringify({ exam_id: 1, answers: State.exam.answers }),
+   });
 } catch (err) {
   console.warn('Backend submit failed:', err.message);
 }
@@ -1838,11 +1860,11 @@ const AdminUI = {
   if (!tbody || tbody.dataset.rendered) return;
   tbody.dataset.rendered = '1';
 
-  try {
-    const res  = await fetch('http://127.0.0.1:3000/api/proctor/incidents', {
-      credentials: 'include'
-    });
-    const data = await res.json();
+   try {
+     const res  = await fetch(`${API}/proctor/incidents`, {
+       credentials: 'include'
+     });
+     const data = await res.json();
 
     if (!data.length) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No incidents recorded yet.</td></tr>';
@@ -1918,7 +1940,7 @@ renderIncident() {
   if (tl) {
     tl.innerHTML = '';
     const studentIncs = (State.admin.incidentData || [])
-      .filter(i => i.student_name === inc.student_name)
+      .filter(i => i.student_id === inc.student_id)
       .slice(0, 5);
 
     if (!studentIncs.length) {
@@ -1985,11 +2007,11 @@ async reviewAction(type) {
   const inc = State.admin.selectedIncident || {};
   const labels = { reviewed: 'Marked as Reviewed', flagged: 'Flagged for Investigation', dismissed: 'Incident Dismissed' };
 
-  try {
-    await fetch(`http://127.0.0.1:3000/api/proctor/incidents/${inc.id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
+   try {
+     await fetch(`${API}/proctor/incidents/${inc.id}`, {
+       method: 'DELETE',
+       credentials: 'include',
+     });
     // Remove from local state
     if (State.admin.incidentData) {
       State.admin.incidentData = State.admin.incidentData.filter(i => i.id !== inc.id);
@@ -2087,6 +2109,16 @@ async function startWebcam() {
     });
   }
 }
+
+// Cleanup webcam stream
+function stopWebcam() {
+  if (State.exam.stream) {
+    State.exam.stream.getTracks().forEach(track => {
+      track.stop();
+    });
+    State.exam.stream = null;
+  }
+}
 /* ═══════════════════════════════════════════════════════════════
    FORM HANDLERS
 ═══════════════════════════════════════════════════════════════ */
@@ -2181,7 +2213,12 @@ const AIProctor = {
   },
 
   stop() {
-    if (this.interval) { clearInterval(this.interval); this.interval = null; }
+    if (this.interval) { 
+      clearInterval(this.interval); 
+      this.interval = null; 
+    }
+    // Cleanup webcam stream
+    stopWebcam();
   },
 
   async analyzeFrame() {
@@ -2195,16 +2232,16 @@ const AIProctor = {
     canvas.getContext('2d').drawImage(video, 0, 0);
     const frame = canvas.toDataURL('image/jpeg', 0.6);
 
-    try {
-      const res  = await fetch('http://127.0.0.1:3000/api/proctor/analyze', {
-        
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ frame, exam_id: 1 }),
+     try {
+       const res  = await fetch(`${API}/proctor/analyze`, {
+         
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         credentials: 'include',
+         body: JSON.stringify({ frame, exam_id: 1 }),
       });
       const data = await res.json();
-      console.log = ('AI Result:'. data);      
+      console.log('AI Result:', data);
       this.updateStatus(data);
     } catch (err) {
       console.warn('Proctor analyze failed:', err.message);

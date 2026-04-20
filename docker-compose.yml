@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:18-alpine
+    container_name: proctordb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: proctordb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proctor-api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/proctordb
+      SESSION_SECRET: ${SESSION_SECRET:-your-session-secret-here}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-your-encryption-secret-here}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:3000}
+      AI_SERVICE_URL: http://ai-service:5000
+      HTTPS_ENABLED: ${HTTPS_ENABLED:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/auth/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Python AI Service
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    container_name: proctor-ai
+    environment:
+      AI_PORT: 5000
+      AI_DEBUG: ${AI_DEBUG:-false}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ai_service:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Development only - use separate web server in production)
+  # Uncomment for development with docker-compose
+  # frontend:
+  #   image: node:22-alpine
+  #   container_name: proctor-frontend
+  #   working_dir: /app
+  #   command: npx live-server Frontend/ --port=8080
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./Frontend:/app/Frontend
+  #   environment:
+  #     - API_BASE_URL=http://localhost:3000/api
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: proctor-network
+    driver: bridge
