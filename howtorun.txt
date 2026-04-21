@@ -1,0 +1,133 @@
+═══════════════════════════════════════════════════════════════
+  ProctorAI — How to Run (Arch Linux)
+═══════════════════════════════════════════════════════════════
+
+PREREQUISITES
+─────────────
+Install the required system packages:
+
+  sudo pacman -S nodejs npm postgresql python python-pip
+
+
+STEP 1 — PostgreSQL Setup
+──────────────────────────
+  # Initialize the database cluster (skip if already done)
+  sudo -u postgres initdb --locale=en_US.UTF-8 -D /var/lib/postgres/data
+
+  # Start and enable PostgreSQL
+  sudo systemctl enable --now postgresql
+
+  # Create the database and user
+  sudo -u postgres createdb proctordb
+
+  # (Optional) Set a password for postgres user
+  sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+
+STEP 2 — Environment Configuration
+───────────────────────────────────
+  # Copy the example env file
+  cp .env.example backend/.env
+
+  # Edit backend/.env and set your values:
+  #   DATABASE_URL=postgresql://postgres@localhost:5432/proctordb
+  #   SESSION_SECRET=<random 64-char hex string>
+  #   ENCRYPTION_SECRET=<random 64-char hex string>
+  #   NODE_ENV=development
+  #   PORT=3000
+
+  # Generate random secrets with:
+  openssl rand -hex 32
+
+
+STEP 3 — Backend Setup
+──────────────────────
+  # Install Node.js dependencies
+  npm install
+
+  # Initialize the database schema and seed data
+  node backend/init-db.js
+
+  # Start the backend server
+  node backend/server.js
+
+  The API will be running at http://localhost:3000
+
+
+STEP 4 — AI Service Setup
+─────────────────────────
+  # Create a virtual environment (recommended)
+  cd ai_service
+  python -m venv venv
+  source venv/bin/activate
+
+  # Install Python dependencies
+  pip install -r requirements.txt
+
+  # Start the AI service
+  python app.py
+
+  The AI service will be running at http://localhost:5000
+
+
+STEP 5 — Frontend
+─────────────────
+  # Open the frontend in your browser
+  # Option A: Direct file open
+  xdg-open Frontend/proctor.html
+
+  # Option B: Use a local server (recommended)
+  npx -y live-server Frontend/ --port=8080
+
+  The frontend will be available at http://localhost:8080/proctor.html
+
+
+DEFAULT TEST ACCOUNTS
+─────────────────────
+  Student:  student1 / password123
+  Admin:    admin1   / admin123
+
+  (Check init-db.js for the full seed data)
+
+
+DOCKER ALTERNATIVE
+──────────────────
+  If you prefer Docker, simply run:
+
+    docker-compose up --build
+
+  This starts all three services (PostgreSQL, Backend, AI Service)
+  automatically. The frontend is served at http://localhost:3000.
+
+
+VERIFICATION
+────────────
+  1. Open the frontend in a browser
+  2. Login as "student1" with password "password123"
+  3. Read the instructions page, then click "Start Exam"
+  4. Grant webcam + microphone access when prompted
+  5. Answer questions, observe the timer counting down
+  6. Submit the exam (manually or wait for auto-submit)
+  7. Logout, then login as "admin1" with password "admin123"
+  8. View the Dashboard → Incident Reports → Review Dashboard
+  9. Click "Review" on a submission to see answers + AI logs
+  10. Assign a final score using the evaluation form
+
+
+TROUBLESHOOTING
+───────────────
+  • PostgreSQL won't start:
+      sudo systemctl status postgresql
+      journalctl -u postgresql -n 20
+
+  • Webcam not working:
+      Ensure the browser has camera permissions.
+      Check that no other app is using the webcam.
+
+  • AI service import errors:
+      Make sure you're in the venv:  source ai_service/venv/bin/activate
+      Reinstall:  pip install -r ai_service/requirements.txt
+
+  • MediaPipe not available:
+      The AI service falls back to Haar cascade detection.
+      Check the /health endpoint to confirm:  curl http://localhost:5000/health
